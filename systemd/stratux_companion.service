@@ -1,0 +1,16 @@
+[Unit]
+Description=Stratux Companion service
+After=multi-user.target
+After=stratux.service
+
+[Service]
+User=pi
+Type=idle
+WorkingDirectory=/home/pi/stratux-companion/
+EnvironmentFile=/home/pi/stratux-companion/.env
+ExecStartPre=-/usr/bin/bash /home/pi/stratux-companion/scripts/startup.sh
+ExecStart=/home/pi/stratux-companion/env/bin/python /home/pi/stratux-companion/stratux_companion/entrypoint.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
