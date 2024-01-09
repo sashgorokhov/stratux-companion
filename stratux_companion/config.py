@@ -1,3 +1,7 @@
+from pathlib import Path
+
+ROOT_DIR: Path = Path(__file__).parent.parent
+SETTINGS_FILE = ROOT_DIR / 'settings.json'
 
 
 LOGGING_CONFIG = {
