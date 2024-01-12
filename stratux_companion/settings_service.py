@@ -1,26 +1,28 @@
-import json
 import logging
 from pathlib import Path
 from threading import Lock
 
 import pydantic
 
-
 logger = logging.getLogger(__name__)
 
 
 class Settings(pydantic.BaseModel):
-    traffic_endpoint: str = 'ws://127.0.0.1/traffic'
+    traffic_endpoint: str = 'ws://192.168.10.1/traffic'
+
+    traffic_track_time_s: int = 30
+
+    mute: bool = False
 
 
 class Settings_Local(Settings):
     traffic_endpoint = 'ws://192.168.0.137/traffic'
 
 
-class SettingsInterface:
+class SettingsService:
     def __init__(self, settings_file: Path):
-        self._settings = self._load_settings()
         self._settings_file = settings_file
+        self._settings = self._load_settings()
         self._lock = Lock()
 
         logger.debug(f'Initialized settings at {settings_file}: {self._settings}')

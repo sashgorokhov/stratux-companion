@@ -2,15 +2,15 @@ import logging.config
 from threading import Thread
 from typing import Callable
 
-from luma.core.interface.serial import spi
-from luma.lcd.device import st7735
+# from luma.core.interface.serial import spi
+# from luma.lcd.device import st7735
 
 from stratux_companion import config
-from stratux_companion.alarm_interface import AlarmInterface
-from stratux_companion.settings_interface import SettingsInterface
-from stratux_companion.sound_interface import SoundInterface
-from stratux_companion.traffic_interface import TrafficInterface
-from stratux_companion.user_interface import UserInterface
+from stratux_companion.alarm_service import AlarmServiceWorker
+from stratux_companion.settings_service import SettingsService
+from stratux_companion.sound_service import SoundServiceWorker
+from stratux_companion.traffic_service import TrafficServiceWorker
+# from stratux_companion.ui_service import UIServiceWorker
 
 logger = logging.getLogger(__name__)
 
@@ -27,34 +27,34 @@ def run_and_wait(*targets: Callable[[], None]):
 
 
 def main():
-    settings_interface = SettingsInterface(
+    settings_service = SettingsService(
         settings_file=config.SETTINGS_FILE
     )
-    traffic_interface = TrafficInterface(
-        settings_interface=settings_interface
+    traffic_service = TrafficServiceWorker(
+        settings_service=settings_service
     )
 
-    serial = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
-    device = st7735(serial, width=128, height=128, v_offset=2, h_offset=1, bgr=True, rotate=1)
-
-    user_interface = UserInterface(
-        device=device,
-        settings_interface=settings_interface,
-        traffic_interface=traffic_interface
+    # serial = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
+    # device = st7735(serial, width=128, height=128, v_offset=2, h_offset=1, bgr=True, rotate=1)
+    #
+    # user_interface = UserInterface(
+    #     device=device,
+    #     settings_service=settings_service,
+    #     traffic_service=traffic_service
+    # )
+    sound_service = SoundServiceWorker(
+        settings_service=settings_service
     )
-    sound_interface = SoundInterface(
-        settings_interface=settings_interface
-    )
-    alarm_interface = AlarmInterface(
-        settings_interface=settings_interface,
-        traffic_interface=traffic_interface,
-        sound_interface=sound_interface
+    alarm_interface = AlarmServiceWorker(
+        settings_service=settings_service,
+        traffic_service=traffic_service,
+        sound_service=sound_service
     )
 
     run_and_wait(
-        user_interface.run,
-        traffic_interface.run,
-        sound_interface.run,
+        #user_interface.run,
+        traffic_service.run,
+        sound_service.run,
         alarm_interface.run
     )
 

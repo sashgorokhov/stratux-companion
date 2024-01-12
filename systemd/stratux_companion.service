@@ -6,6 +6,7 @@ After=stratux.service
 [Service]
 User=pi
 Type=idle
+StandardOutput=journal+console
 WorkingDirectory=/home/pi/stratux-companion/
 EnvironmentFile=/home/pi/stratux-companion/.env
 ExecStartPre=-/usr/bin/bash /home/pi/stratux-companion/scripts/startup.sh

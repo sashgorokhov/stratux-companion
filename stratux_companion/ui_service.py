@@ -1,5 +1,5 @@
 from stratux_companion.settings_interface import SettingsInterface
-from stratux_companion.traffic_interface import TrafficInterface
+from stratux_companion.traffic_service import TrafficServiceWorker
 import time
 from typing import Tuple
 
@@ -33,8 +33,8 @@ class MenuItem:
         return bbox[3]
 
 
-class UserInterface:
-    def __init__(self, device, traffic_interface: TrafficInterface, settings_interface: SettingsInterface):
+class UIServiceWorker:
+    def __init__(self, device, traffic_interface: TrafficServiceWorker, settings_interface: SettingsInterface):
         self._device = device
         self._traffic_interface = traffic_interface
         self._settings_interface = settings_interface
@@ -74,5 +74,5 @@ class UserInterface:
 if __name__ == '__main__':
     serial = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
     device = st7735(serial, width=128, height=128, v_offset=2, h_offset=1, bgr=True, rotate=1)
-    ui = UserInterface(device)
+    ui = UIServiceWorker(device)
     ui.run()

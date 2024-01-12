@@ -26,7 +26,7 @@ LOGGING_CONFIG = {
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'formatter': 'default',
-            'filename': '/var/log/stratux_companion.log',
+            'filename': ROOT_DIR / 'stratux_companion.log',
             'maxBytes': 1024 * 1024,  # 1 mb
             'backupCount': 0
         },
