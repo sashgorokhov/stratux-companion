@@ -38,12 +38,12 @@ class AlarmServiceWorker:
         for message in messages:
             # TODO: Handle invalid GPS
             distance = message.gps - current_position
-            if distance > settings.max_distance_m:
-                if distance > 50_000:
-                    logger.warning(f'Wonky distance for message {message}: home at {current_position}, distance is {distance}')
-                continue
-            if message.alt > settings.max_altitude_m:
-                continue
+            # if distance > settings.max_distance_m:
+            #     if distance > 50_000:
+            #         logger.warning(f'Wonky distance for message {message}: home at {current_position}, distance is {distance}')
+            #     continue
+            # if message.alt > settings.max_altitude_m:
+            #     continue
 
             # TODO Calculate heading direction alarm
 
