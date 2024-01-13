@@ -1,6 +1,10 @@
 set -ex
 
 cd $DEPLOYMENT_DIR
-git pull $SOURCE_REPO
+
+# Pull new updates...
+git fetch --all
+# Reset local files
+git reset --hard origin/master
 
 $DEPLOYMENT_DIR/env/bin/poetry install
