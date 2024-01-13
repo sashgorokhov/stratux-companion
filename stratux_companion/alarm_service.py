@@ -20,7 +20,32 @@ class AlarmTarget(NamedTuple):
 
     dist: int
     heading: int
+    angle: int
     speed: int
+
+
+def truncate_number(n: int) -> int:
+    """
+    68 -> 60
+    127 -> 120
+    4567 -> 4500
+    12566 -> 12000
+    """
+    s = list(str(n))
+
+    t = len(s)
+
+    if t == 1:
+        return n
+    if t == 2:
+        t = 1
+    else:
+        t -= 1
+
+    for i in range(1, t):
+        s[-i] = 0
+
+    return int(''.join(map(str, s)))
 
 
 class AlarmServiceWorker:
@@ -37,7 +62,11 @@ class AlarmServiceWorker:
 
         for message in messages:
             # TODO: Handle invalid GPS
-            distance = message.gps - current_position
+            if not message.gps.is_valid:
+                continue
+
+            distance = int(message.gps - current_position)
+            angle = int(self._angle(current_position, message.gps))
             # if distance > settings.max_distance_m:
             #     if distance > 50_000:
             #         logger.warning(f'Wonky distance for message {message}: home at {current_position}, distance is {distance}')
@@ -51,20 +80,23 @@ class AlarmServiceWorker:
                 icao=message.icao,
                 gps=message.gps,
                 alt=int(message.alt),
-                dist=int(distance),
+                dist=distance,
                 heading=message.hdg,
                 speed=message.spd,
+                angle=angle
             )
         return targets
 
     def _angle(self, pos1: GPS, pos2: GPS) -> int:
         result = Geodesic.WGS84.Inverse(pos1.lat, pos1.lng, pos2.lat, pos2.lng)
-        return int(result['azi1'])
+        azi1 = int(result['azi1'])
+        if azi1 < 0:
+            azi1 += 360
+        return azi1
 
     def run(self):
         while True:
             try:
-                current_position = self._position_service.get_current_position()
                 latest_messages = self._traffic_service.get_latest_messages()
                 alarm_targets = self._get_alarm_targets(latest_messages)
 
@@ -72,7 +104,9 @@ class AlarmServiceWorker:
                     logger.info(f'Found {len(alarm_targets)} targets to alarm: {alarm_targets.keys()}')
 
                     for target in alarm_targets.values():
-                        alarm = f"{int(target.dist)} meters away, {int(target.alt)} meters up, at {self._angle(current_position, target.gps)} degrees"
+                        alarm = f"{truncate_number(int(target.dist))} meters away, " \
+                                f"{truncate_number(int(target.alt))} meters up, " \
+                                f"at {truncate_number(target.angle)} degrees"
                         self._sound_service.play_sound(alarm)
             except:
                 logger.exception('Error in alarm service loop')

@@ -1,3 +1,4 @@
+import datetime
 import logging
 import time
 from queue import Queue
@@ -18,13 +19,16 @@ class SoundServiceWorker:
     def run(self):
         while True:
             if not self._queue.empty():
-                text = self._queue.get_nowait()
+                ts, text = self._queue.get_nowait()
+                if (datetime.datetime.utcnow() - ts) > datetime.timedelta(seconds=5):
+                    continue
                 self._play_sound(text)
 
             time.sleep(0.5)
 
     def play_sound(self, text: str):
-        self._queue.put_nowait(text)
+        # TODO: Record submission timestamp, and ignore messages older than N
+        self._queue.put_nowait((datetime.datetime.utcnow(), text))
 
     def _play_sound(self, text: str):
         logger.debug(f'Speech text: {text}')
