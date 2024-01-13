@@ -67,11 +67,11 @@ class AlarmServiceWorker:
             latest_messages = self._traffic_service.get_latest_messages()
             alarm_targets = self._get_alarm_targets(latest_messages)
 
-            if len(alarm_targets) != 0:
+            if len(alarm_targets):
                 logger.info(f'Found {len(alarm_targets)} targets to alarm: {alarm_targets.keys()}')
 
-            for target in alarm_targets.values():
-                alarm = f"{int(target.dist)} meters away, {int(target.alt)} meters up, at {self._angle(current_position, target.gps)} degrees"
-                self._sound_service.play_sound(alarm)
+                for target in alarm_targets.values():
+                    alarm = f"{int(target.dist)} meters away, {int(target.alt)} meters up, at {self._angle(current_position, target.gps)} degrees"
+                    self._sound_service.play_sound(alarm)
 
             time.sleep(5)
