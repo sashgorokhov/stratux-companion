@@ -7,4 +7,5 @@ git fetch --all
 # Reset local files
 git reset --hard origin/master
 
+source $DEPLOYMENT_DIR/env/bin/activate
 $DEPLOYMENT_DIR/env/bin/poetry install
