@@ -4,6 +4,8 @@ from threading import Lock
 
 import pydantic
 
+from stratux_companion.util import GPS
+
 logger = logging.getLogger(__name__)
 
 
@@ -13,6 +15,14 @@ class Settings(pydantic.BaseModel):
     traffic_track_time_s: int = 30
 
     mute: bool = False
+
+    default_position: GPS = GPS(
+        lat=30.4509056,
+        lng=-97.6827249,
+    )
+
+    max_distance_m: int = 10_000
+    max_altitude_m: int = 3_000
 
 
 class Settings_Local(Settings):
