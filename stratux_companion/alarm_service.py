@@ -58,20 +58,23 @@ class AlarmServiceWorker:
         return targets
 
     def _angle(self, pos1: GPS, pos2: GPS) -> int:
-        result = Geodesic.Inverse(pos1.lat, pos1.lng, pos2.lat, pos2.lng)
+        result = Geodesic.WGS84.Inverse(pos1.lat, pos1.lng, pos2.lat, pos2.lng)
         return int(result['azi1'])
 
     def run(self):
         while True:
-            current_position = self._position_service.get_current_position()
-            latest_messages = self._traffic_service.get_latest_messages()
-            alarm_targets = self._get_alarm_targets(latest_messages)
+            try:
+                current_position = self._position_service.get_current_position()
+                latest_messages = self._traffic_service.get_latest_messages()
+                alarm_targets = self._get_alarm_targets(latest_messages)
 
-            if len(alarm_targets):
-                logger.info(f'Found {len(alarm_targets)} targets to alarm: {alarm_targets.keys()}')
+                if len(alarm_targets):
+                    logger.info(f'Found {len(alarm_targets)} targets to alarm: {alarm_targets.keys()}')
 
-                for target in alarm_targets.values():
-                    alarm = f"{int(target.dist)} meters away, {int(target.alt)} meters up, at {self._angle(current_position, target.gps)} degrees"
-                    self._sound_service.play_sound(alarm)
+                    for target in alarm_targets.values():
+                        alarm = f"{int(target.dist)} meters away, {int(target.alt)} meters up, at {self._angle(current_position, target.gps)} degrees"
+                        self._sound_service.play_sound(alarm)
+            except:
+                logger.exception('Error in alarm service loop')
 
             time.sleep(5)
