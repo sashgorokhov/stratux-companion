@@ -40,7 +40,7 @@ from stratux_companion.util import ServiceWorker
 
 
 class UIServiceWorker(ServiceWorker):
-    delay = datetime.timedelta(seconds=1)
+    delay = datetime.timedelta(seconds=0)
 
     def __init__(self, device: backlit_device, traffic_service: TrafficServiceWorker, settings_service: SettingsService, position_service: PositionServiceWorker):
         self._device = device
