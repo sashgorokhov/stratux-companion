@@ -8,7 +8,7 @@ from stratux_companion.position_service import PositionServiceWorker
 from stratux_companion.settings_service import SettingsService
 from stratux_companion.sound_service import SoundServiceWorker
 from stratux_companion.traffic_service import TrafficServiceWorker, TrafficMessage
-from stratux_companion.util import GPS
+from stratux_companion.util import GPS, truncate_number
 
 logger = logging.getLogger(__name__)
 
@@ -22,30 +22,6 @@ class AlarmTarget(NamedTuple):
     heading: int
     angle: int
     speed: int
-
-
-def truncate_number(n: int) -> int:
-    """
-    68 -> 60
-    127 -> 120
-    4567 -> 4500
-    12566 -> 12000
-    """
-    s = list(str(n))
-
-    t = len(s)
-
-    if t == 1:
-        return n
-    if t == 2:
-        t = 1
-    else:
-        t -= 1
-
-    for i in range(1, t):
-        s[-i] = 0
-
-    return int(''.join(map(str, s)))
 
 
 class AlarmServiceWorker:
@@ -97,7 +73,7 @@ class AlarmServiceWorker:
     def run(self):
         while True:
             try:
-                latest_messages = self._traffic_service.get_latest_messages()
+                latest_messages = self._traffic_service.get_tracked_messages()
                 alarm_targets = self._get_alarm_targets(latest_messages)
 
                 if len(alarm_targets):

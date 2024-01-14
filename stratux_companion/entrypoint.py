@@ -13,8 +13,6 @@ from stratux_companion.sound_service import SoundServiceWorker
 from stratux_companion.traffic_service import TrafficServiceWorker
 from stratux_companion.ui_service import UIServiceWorker
 
-from stratux_companion.ui_service import UIServiceWorker
-
 logger = logging.getLogger(__name__)
 
 
@@ -33,11 +31,12 @@ def main():
     settings_service = SettingsService(
         settings_file=config.SETTINGS_FILE
     )
-    traffic_service = TrafficServiceWorker(
-        settings_service=settings_service
-    )
     position_service = PositionServiceWorker(
         settings_service=settings_service
+    )
+    traffic_service = TrafficServiceWorker(
+        settings_service=settings_service,
+        position_service=position_service,
     )
 
     serial = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
@@ -46,7 +45,8 @@ def main():
     ui_service = UIServiceWorker(
         device=device,
         settings_service=settings_service,
-        traffic_service=traffic_service
+        traffic_service=traffic_service,
+        position_service=position_service,
     )
     sound_service = SoundServiceWorker(
         settings_service=settings_service

@@ -1,8 +1,10 @@
 import datetime
 import json
 import logging
-from typing import NamedTuple, List
+from threading import Lock
+from typing import NamedTuple, List, Dict
 
+from stratux_companion.position_service import PositionServiceWorker
 from stratux_companion.settings_service import SettingsService
 from websockets.sync.client import connect
 
@@ -30,11 +32,24 @@ class TrafficMessage(NamedTuple):
     hdg: int
 
 
+class TrafficInstance(NamedTuple):
+    gps: GPS
+    distance: int
+    altitude: int
+    speed: int
+    heading: int
+    angle: int
+    icao: str
+
+
 class TrafficServiceWorker:
-    def __init__(self, settings_service: SettingsService):
+    def __init__(self, settings_service: SettingsService, position_service: PositionServiceWorker):
         self._settings_service = settings_service
+        self._position_service = position_service
 
         self._messages: List[TrafficMessage] = []
+
+        self._lock = Lock()
 
     def run(self):
         with connect(self._settings_service.get_settings().traffic_endpoint) as websocket:
@@ -53,7 +68,7 @@ class TrafficServiceWorker:
             message = json.loads(message_str)
             traffic_message = TrafficMessage(
                 ts=datetime.datetime.utcnow(),
-                icao=hex(message['Icao_addr']),
+                icao=str(message['Icao_addr']),
                 gps=GPS(
                     lat=message['Lat'],
                     lng=message['Lng'],
@@ -66,15 +81,38 @@ class TrafficServiceWorker:
             logger.exception(f'Error decoding message: {message_str}')
             return
 
-        self._messages.append(traffic_message)
+        if not traffic_message.gps.is_valid:
+            logger.warning(f'Skipping traffic message with invalid GPS: {traffic_message}')
+            return
 
-    def get_latest_messages(self) -> List[TrafficMessage]:
-        traffic_track_time = datetime.timedelta(seconds=self._settings_service.get_settings().traffic_track_time_s)
-        while len(self._messages):
-            if (datetime.datetime.utcnow() - self._messages[0].ts) > traffic_track_time:
-                logger.debug(f'{self._messages[0].icao} has outdated')
-                self._messages.pop(0)
-            else:
-                break
+        with self._lock:
+            self._messages.append(traffic_message)
 
-        return self._messages[:]
+    def get_tracked_messages(self) -> List[TrafficMessage]:
+        with self._lock:
+            traffic_track_time = datetime.timedelta(seconds=self._settings_service.get_settings().traffic_track_time_s)
+            while len(self._messages):
+                if (datetime.datetime.utcnow() - self._messages[0].ts) > traffic_track_time:
+                    logger.debug(f'{self._messages[0].icao} has outdated')
+                    self._messages.pop(0)
+                else:
+                    break
+
+            return self._messages[:]
+
+    def get_traffic(self) -> List[TrafficInstance]:
+        traffic: Dict[str, TrafficInstance] = {}
+        position = self._position_service.get_current_position()
+
+        for message in self.get_tracked_messages():
+            traffic[message.icao] = TrafficInstance(
+                gps=message.gps,
+                distance=int(position.distance(message.gps)),
+                angle=int(position.angle(message.gps)),
+                heading=int(message.hdg),
+                altitude=int(message.alt),
+                icao=message.icao,
+                speed=int(message.spd)
+            )
+
+        return sorted(traffic.values(), key=lambda t: t.distance)
