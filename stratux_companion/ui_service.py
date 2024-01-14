@@ -79,7 +79,7 @@ class UIServiceWorker(ServiceWorker):
             bbox = draw.textbbox((x, y), text=message, font=font)
             draw.text((x, y), text=message, font=font)
 
-            y += bbox[3] - y + 5
+            y += bbox[3] + 5
 
     # def _update(self, draw: ImageDraw):
     #     font = draw.getfont()
