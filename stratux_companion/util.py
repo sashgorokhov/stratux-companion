@@ -51,11 +51,12 @@ class ServiceWorker(metaclass=abc.ABCMeta):
         while not self._shutdown:
             try:
                 self.trigger()
-                self._heartbeat = datetime.datetime.utcnow()  # Update heartbeat only if trigger executed successfully
+                self._update_heartbeat()  # Update heartbeat only if trigger executed successfully
             except:
                 logger.exception(f'Unhandled error in {self.__class__.__name__}.trigger')
 
-            time.sleep(self.delay.total_seconds())
+            if not self._shutdown:
+                time.sleep(self.delay.total_seconds())
 
     def shutdown(self):
         """
@@ -69,6 +70,9 @@ class ServiceWorker(metaclass=abc.ABCMeta):
         Return timestamp of last heartbeat
         """
         return self._heartbeat
+
+    def _update_heartbeat(self):
+        self._heartbeat = datetime.datetime.utcnow()
 
     def trigger(self):
         """

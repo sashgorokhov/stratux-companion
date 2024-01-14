@@ -2,9 +2,6 @@ import logging.config
 from threading import Thread
 from typing import Callable
 
-from luma.core.interface.serial import spi
-from luma.lcd.device import st7735
-
 from stratux_companion import config
 from stratux_companion.alarm_service import AlarmServiceWorker
 from stratux_companion.position_service import PositionServiceWorker
@@ -39,11 +36,7 @@ def main():
         position_service=position_service,
     )
 
-    serial = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
-    device = st7735(serial, width=128, height=128, v_offset=2, h_offset=1, bgr=True, rotate=1, gpio_LIGHT=23, active_low=False)
-
     ui_service = UIServiceWorker(
-        device=device,
         settings_service=settings_service,
         traffic_service=traffic_service,
         position_service=position_service,

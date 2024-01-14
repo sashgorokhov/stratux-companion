@@ -4,11 +4,12 @@ import logging
 from threading import Lock
 from typing import NamedTuple, List, Dict
 
-from stratux_companion.position_service import PositionServiceWorker
-from stratux_companion.settings_service import SettingsService
+from websockets import ConnectionClosed
 from websockets.sync.client import connect
 
-from stratux_companion.util import GPS
+from stratux_companion.position_service import PositionServiceWorker
+from stratux_companion.settings_service import SettingsService
+from stratux_companion.util import GPS, ServiceWorker
 
 """
 {"Icao_addr":11030261,"Reg":"N6340E","Tail":"N6340E","Emitter_category":1,"SurfaceVehicleType":0,"OnGround":false,"Addr_type":0,"TargetType":1,"SignalLevel":-28.873949984654253,"SignalLevelHist":null,"Squawk":3655,"Position_valid":true,"Lat":30.346046,"Lng":-97.770645,"Alt":4300,"GnssDiffFromBaroAlt":75,"AltIsGNSS":false,"NIC":8,"NACp":9,"Track":198,"TurnRate":0,"Speed":99,"Speed_valid":true,"Vvel":0,"Timestamp":"2024-01-12T05:30:20.777200261Z","PriorityStatus":0,"Age":59.72,"AgeLastAlt":59.72,"Last_seen":"0001-01-01T00:20:29.26Z","Last_alt":"0001-01-01T00:20:29.26Z","Last_GnssDiff":"0001-01-01T00:20:29.26Z","Last_GnssDiffAlt":4300,"Last_speed":"0001-01-01T00:20:29.26Z","Last_source":2,"ExtrapolatedPosition":true,"Last_extrapolation":"0001-01-01T00:21:28.75Z","AgeExtrapolation":0.23,"Lat_fix":30.372026,"Lng_fix":-97.76068,"Alt_fix":4300,"BearingDist_valid":false,"Bearing":0,"Distance":0,"DistanceEstimated":0,"DistanceEstimatedLastTs":"0001-01-01T00:00:00Z","ReceivedMsgs":261,"IsStratux":false}
@@ -21,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 class TrafficMessage(NamedTuple):
+    """
+    Container for traffic message received from stratux /traffic websocket endpoint
+    """
     ts: datetime.datetime
 
     icao: str
@@ -33,6 +37,9 @@ class TrafficMessage(NamedTuple):
 
 
 class TrafficInstance(NamedTuple):
+    """
+    Processed information of specific traffic entity (by icao address) with calculated supplementary information like distance and angle
+    """
     gps: GPS
     distance: int
     altitude: int
@@ -42,7 +49,16 @@ class TrafficInstance(NamedTuple):
     icao: str
 
 
-class TrafficServiceWorker:
+class TrafficServiceWorker(ServiceWorker):
+    """
+    Traffic service interfaces with stratux and maintains a buffer of most recent traffic messages received.
+    """
+    # Delay between attempts to connect to stratux
+    delay = datetime.timedelta(seconds=15)
+
+    # Timeout for reading messages from websocket
+    message_timeout = datetime.timedelta(seconds=5)
+
     def __init__(self, settings_service: SettingsService, position_service: PositionServiceWorker):
         self._settings_service = settings_service
         self._position_service = position_service
@@ -51,19 +67,45 @@ class TrafficServiceWorker:
 
         self._lock = Lock()
 
-    def run(self):
-        with connect(self._settings_service.get_settings().traffic_endpoint) as websocket:
-            logger.debug('Waiting for pong from stratux websocket...')
-            p = websocket.ping()
-            p.wait(60)
-            logger.debug('Pong received')
+        super().__init__()
 
-            while True:
-                message_str = websocket.recv()
+    def trigger(self):
+        """
+        Attempt to connect to stratux websocket and process its messages.
+        If connection is impossible or closed, it will repeat an attempt to re-connect after `delay` seconds.
+        """
+        endpoint = self._settings_service.get_settings().traffic_endpoint
+        logger.debug(f'Trying to connect to stratux /traffic endpoint at {endpoint}')
+        with connect(endpoint) as websocket:
+            p = websocket.ping()
+            p.wait(10)
+            logger.info('Successfully connected to stratux /traffic endpoint')
+            self._consume_websocket(websocket)
+
+    def _consume_websocket(self, websocket):
+        """Consume messages from websocket until shutdown or connection is unexpectedly closed"""
+        while not self._shutdown:
+            try:
+                # If we get a lot of messages in short period of time, this loop will iterate as fast as possible through them
+                message_str = websocket.recv(timeout=self.delay.total_seconds())
                 logger.debug(f'Traffic message received: {message_str}')
                 self._handle_traffic_message(message_str)
+            except TimeoutError:
+                self._update_heartbeat()
+                continue
+            except ConnectionClosed:
+                logger.warning('Websocket connection unexpectedly closed')
+                return
+            except:
+                logger.exception('Error receiving message from websocket')
+                continue
+            else:
+                self._update_heartbeat()
 
     def _handle_traffic_message(self, message_str: str):
+        """
+        Process received traffic message string
+        """
         try:
             message = json.loads(message_str)
             traffic_message = TrafficMessage(
@@ -89,10 +131,14 @@ class TrafficServiceWorker:
             self._messages.append(traffic_message)
 
     def get_tracked_messages(self) -> List[TrafficMessage]:
+        """
+        Return latest messages (based on traffic_track_time_s)
+        """
         with self._lock:
             traffic_track_time = datetime.timedelta(seconds=self._settings_service.get_settings().traffic_track_time_s)
+            now = datetime.datetime.utcnow()
             while len(self._messages):
-                if (datetime.datetime.utcnow() - self._messages[0].ts) > traffic_track_time:
+                if (now - self._messages[0].ts) > traffic_track_time:
                     logger.debug(f'{self._messages[0].icao} has outdated')
                     self._messages.pop(0)
                 else:
@@ -101,6 +147,9 @@ class TrafficServiceWorker:
             return self._messages[:]
 
     def get_traffic(self) -> List[TrafficInstance]:
+        """
+        Return list of latest TrafficInstances processed from current message buffer
+        """
         traffic: Dict[str, TrafficInstance] = {}
         position = self._position_service.get_current_position()
 

@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from threading import Lock
+from typing import Literal
 
 import pydantic
 
@@ -23,6 +24,8 @@ class Settings(pydantic.BaseModel):
 
     max_distance_m: int = 10_000
     max_altitude_m: int = 3_000
+
+    display_rotation: Literal[0, 1, 2, 3] = 1
 
 
 class Settings_Local(Settings):
