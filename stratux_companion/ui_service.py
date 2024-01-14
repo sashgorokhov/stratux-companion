@@ -1,4 +1,4 @@
-from stratux_companion.settings_interface import SettingsInterface
+from stratux_companion.settings_service import SettingsService
 from stratux_companion.traffic_service import TrafficServiceWorker
 import time
 from typing import Tuple
@@ -7,7 +7,7 @@ from PIL.ImageDraw import ImageDraw
 from luma.core.interface.serial import spi
 from luma.core.render import canvas
 from luma.core.sprite_system import framerate_regulator
-from luma.lcd.device import st7735
+from luma.lcd.device import st7735, backlit_device
 
 
 class MenuItem:
@@ -34,14 +34,15 @@ class MenuItem:
 
 
 class UIServiceWorker:
-    def __init__(self, device, traffic_interface: TrafficServiceWorker, settings_interface: SettingsInterface):
+    def __init__(self, device: backlit_device, traffic_service: TrafficServiceWorker, settings_service: SettingsService):
         self._device = device
-        self._traffic_interface = traffic_interface
-        self._settings_interface = settings_interface
+        self._traffic_service = traffic_service
+        self._settings_service = settings_service
 
         self._canvas = canvas(self._device)
         self._framerate_regulator = framerate_regulator()
         self._device.clear()
+        self._device.backlight(True)
 
         self.menus = [
             MenuItem('config'),

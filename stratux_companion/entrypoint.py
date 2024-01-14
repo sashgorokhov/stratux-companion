@@ -2,8 +2,8 @@ import logging.config
 from threading import Thread
 from typing import Callable
 
-# from luma.core.interface.serial import spi
-# from luma.lcd.device import st7735
+from luma.core.interface.serial import spi
+from luma.lcd.device import st7735
 
 from stratux_companion import config
 from stratux_companion.alarm_service import AlarmServiceWorker
@@ -11,7 +11,9 @@ from stratux_companion.position_service import PositionServiceWorker
 from stratux_companion.settings_service import SettingsService
 from stratux_companion.sound_service import SoundServiceWorker
 from stratux_companion.traffic_service import TrafficServiceWorker
-# from stratux_companion.ui_service import UIServiceWorker
+from stratux_companion.ui_service import UIServiceWorker
+
+from stratux_companion.ui_service import UIServiceWorker
 
 logger = logging.getLogger(__name__)
 
@@ -38,14 +40,14 @@ def main():
         settings_service=settings_service
     )
 
-    # serial = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
-    # device = st7735(serial, width=128, height=128, v_offset=2, h_offset=1, bgr=True, rotate=1)
-    #
-    # user_interface = UserInterface(
-    #     device=device,
-    #     settings_service=settings_service,
-    #     traffic_service=traffic_service
-    # )
+    serial = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
+    device = st7735(serial, width=128, height=128, v_offset=2, h_offset=1, bgr=True, rotate=1, gpio_LIGHT=23, active_low=False)
+
+    ui_service = UIServiceWorker(
+        device=device,
+        settings_service=settings_service,
+        traffic_service=traffic_service
+    )
     sound_service = SoundServiceWorker(
         settings_service=settings_service
     )
@@ -57,7 +59,7 @@ def main():
     )
 
     run_and_wait(
-        #user_interface.run,
+        ui_service.run,
         traffic_service.run,
         sound_service.run,
         alarm_interface.run,
