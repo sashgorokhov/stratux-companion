@@ -55,7 +55,7 @@ class ServiceWorker(metaclass=abc.ABCMeta):
             except:
                 logger.exception(f'Unhandled error in {self.__class__.__name__}.trigger')
 
-            time.sleep(self.delay.seconds)
+            time.sleep(self.delay.total_seconds())
 
     def shutdown(self):
         """
