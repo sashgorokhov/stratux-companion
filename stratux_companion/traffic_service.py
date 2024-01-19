@@ -4,6 +4,7 @@ import logging
 from threading import Lock
 from typing import NamedTuple, List, Dict
 
+from geopy.units import meters
 from websockets import ConnectionClosed
 from websockets.sync.client import connect
 
@@ -24,6 +25,8 @@ logger = logging.getLogger(__name__)
 class TrafficMessage(NamedTuple):
     """
     Container for traffic message received from stratux /traffic websocket endpoint
+
+    Reference: `type TrafficInfo struct {` in stratux source code
     """
     ts: datetime.datetime
 
@@ -31,8 +34,8 @@ class TrafficMessage(NamedTuple):
 
     gps: GPS
 
-    alt: int
-    spd: int
+    alt: int  # feet
+    spd: int  # knots
     hdg: int
 
 
@@ -45,7 +48,7 @@ class TrafficInstance(NamedTuple):
     altitude: int
     speed: int
     heading: int
-    angle: int
+    bearing: int  # Absolute angle of traffic relative to position reported by PositionService
     icao: str
 
 
@@ -157,11 +160,15 @@ class TrafficServiceWorker(ServiceWorker):
             traffic[message.icao] = TrafficInstance(
                 gps=message.gps,
                 distance=int(position.distance(message.gps)),
-                angle=int(position.angle(message.gps)),
+                bearing=int(position.angle(message.gps)),
                 heading=int(message.hdg),
-                altitude=int(message.alt),
+                altitude=int(meters(feet=message.alt or 0)),
                 icao=message.icao,
-                speed=int(message.spd)
+                speed=int(km_h(message.spd))
             )
 
         return sorted(traffic.values(), key=lambda t: t.distance)
+
+
+def km_h(knots: float) -> float:
+    return knots * 1.85200

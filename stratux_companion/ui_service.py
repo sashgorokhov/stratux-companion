@@ -4,8 +4,7 @@ from PIL import ImageFont
 
 from stratux_companion.position_service import PositionServiceWorker
 from stratux_companion.settings_service import SettingsService
-from stratux_companion.traffic_service import TrafficServiceWorker
-
+from stratux_companion.traffic_service import TrafficServiceWorker, TrafficInstance
 
 from PIL.ImageDraw import ImageDraw
 from luma.core.interface.serial import spi
@@ -51,7 +50,8 @@ class UIServiceWorker(ServiceWorker):
                 self._update(draw)
 
     def _update(self, draw: ImageDraw):
-        font = ImageFont.load_default(size=10)
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11, encoding="unic")
+        total_messages = len(self._traffic_service.get_tracked_messages())
         traffic = self._traffic_service.get_traffic()[:5]
 
         messages = []
@@ -59,14 +59,18 @@ class UIServiceWorker(ServiceWorker):
         for t in traffic:
             messages.append(f"{t.icao[:3]} D:{t.distance}m A:{t.altitude}m")
 
-        y = 10
-        x = 3
+        y = 3
+
+        y = self.println(y, f'Messages: {total_messages}', draw, font)
 
         if not messages:
-            messages.append("No traffic detected")
+            y = self.println(y, 'No traffic detected', draw, font)
 
         for message in messages:
-            bbox = draw.textbbox((x, y), text=message, font=font)
-            draw.text((x, y), text=message, font=font)
+            y = self.println(y, message, draw, font)
 
-            y += bbox[3] + 5
+    def println(self, y, text, draw, font):
+        bbox = draw.textbbox((10, y), text=text, font=font)
+        draw.text((10, y), text=text, font=font)
+        y = bbox[3] + 2
+        return y
