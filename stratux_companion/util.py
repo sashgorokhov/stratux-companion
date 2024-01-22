@@ -2,7 +2,8 @@ import abc
 import datetime
 import logging
 import time
-from typing import NamedTuple
+from queue import Queue
+from typing import NamedTuple, Any
 import geopy.distance
 from geographiclib.geodesic import Geodesic
 
@@ -24,7 +25,7 @@ class GPS(NamedTuple):
     def distance(self, other: 'GPS') -> float:
         return geopy.distance.geodesic(tuple(self), tuple(other)).meters
 
-    def angle(self, other: 'GPS') -> float:
+    def absolute_bearing(self, other: 'GPS') -> float:
         result = Geodesic.WGS84.Inverse(self.lat, self.lng, other.lat, other.lng)
         azi1 = result['azi1']
         if azi1 < 0:
@@ -81,6 +82,25 @@ class ServiceWorker(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
 
+class QueueConsumingServiceWorker(ServiceWorker):
+    """
+    Implement `process_item` that gets run for every item in `queue`
+    """
+    delay = datetime.timedelta(seconds=0)
+
+    def __init__(self, queue: Queue):
+        self._queue = queue
+
+        super().__init__()
+
+    def trigger(self):
+        item = self._queue.get(block=True)
+        self.process_item(item)
+
+    def process_item(self, item: Any):
+        raise NotImplementedError()
+
+
 def truncate_number(n: int) -> int:
     """
     68 -> 60
@@ -103,3 +123,7 @@ def truncate_number(n: int) -> int:
         s[-i] = 0
 
     return int(''.join(map(str, s)))
+
+
+def km_h(knots: float) -> float:
+    return knots * 1.85200

@@ -1,3 +1,4 @@
+import datetime
 import logging
 import time
 from typing import List, NamedTuple, Dict
@@ -7,8 +8,8 @@ from geographiclib.geodesic import Geodesic
 from stratux_companion.position_service import PositionServiceWorker
 from stratux_companion.settings_service import SettingsService
 from stratux_companion.sound_service import SoundServiceWorker
-from stratux_companion.traffic_service import TrafficServiceWorker, TrafficMessage
-from stratux_companion.util import GPS, truncate_number
+from stratux_companion.traffic_service import TrafficServiceWorker, TrafficInfo
+from stratux_companion.util import GPS, truncate_number, QueueConsumingServiceWorker, ServiceWorker
 
 logger = logging.getLogger(__name__)
 
@@ -24,67 +25,46 @@ class AlarmTarget(NamedTuple):
     speed: int
 
 
-class AlarmServiceWorker:
-    def __init__(self, traffic_service: TrafficServiceWorker, settings_service: SettingsService, sound_service: SoundServiceWorker, position_service: PositionServiceWorker):
-        self._position_service = position_service
+class AlarmServiceWorker(ServiceWorker):
+    delay = datetime.timedelta(seconds=15)
+
+    def __init__(self, traffic_service: TrafficServiceWorker, settings_service: SettingsService, sound_service: SoundServiceWorker):
         self._sound_service = sound_service
         self._settings_service = settings_service
         self._traffic_service = traffic_service
 
-    def _get_alarm_targets(self, messages: List[TrafficMessage]) -> Dict[str, AlarmTarget]:
-        targets: Dict[str, AlarmTarget] = {}
-        settings = self._settings_service.get_settings()
-        current_position = self._position_service.get_current_position()
+        self._alarming_traffic: List[TrafficInfo] = []
 
-        for message in messages:
-            # TODO: Handle invalid GPS
-            if not message.gps.is_valid:
+        super().__init__()
+
+    def get_alarming_traffic(self, all_traffic: List[TrafficInfo]) -> List[TrafficInfo]:
+        alarming_traffic: List[TrafficInfo] = []
+
+        max_distance_m = self._settings_service.get_settings().max_distance_m
+        max_altitude_m = self._settings_service.get_settings().max_altitude_m
+
+        for t in all_traffic:
+            if t.distance_m > max_distance_m:
+                continue
+            if t.altitude_m > max_altitude_m:
                 continue
 
-            distance = int(message.gps - current_position)
-            angle = int(self._angle(current_position, message.gps))
-            # if distance > settings.max_distance_m:
-            #     if distance > 50_000:
-            #         logger.warning(f'Wonky distance for message {message}: home at {current_position}, distance is {distance}')
-            #     continue
-            # if message.alt > settings.max_altitude_m:
-            #     continue
+            alarming_traffic.append(t)
 
-            # TODO Calculate heading direction alarm
+        return sorted(alarming_traffic, key=lambda t: t.distance_m)
 
-            targets[message.icao] = AlarmTarget(
-                icao=message.icao,
-                gps=message.gps,
-                alt=int(message.alt),
-                dist=distance,
-                heading=message.hdg,
-                speed=message.spd,
-                angle=angle
-            )
-        return targets
+    def alarming_traffic(self):
+        return self._alarming_traffic[:]
 
-    def _angle(self, pos1: GPS, pos2: GPS) -> int:
-        result = Geodesic.WGS84.Inverse(pos1.lat, pos1.lng, pos2.lat, pos2.lng)
-        azi1 = int(result['azi1'])
-        if azi1 < 0:
-            azi1 += 360
-        return azi1
+    def trigger(self):
+        all_traffic = self._traffic_service.get_closest_traffic()
+        self._alarming_traffic = self.get_alarming_traffic(all_traffic)
 
-    def run(self):
-        while True:
-            try:
-                latest_messages = self._traffic_service.get_tracked_messages()
-                alarm_targets = self._get_alarm_targets(latest_messages)
-
-                if len(alarm_targets):
-                    logger.info(f'Found {len(alarm_targets)} targets to alarm: {alarm_targets.keys()}')
-
-                    for target in alarm_targets.values():
-                        alarm = f"{truncate_number(int(target.dist))} meters away, " \
-                                f"{truncate_number(int(target.alt))} meters up, " \
-                                f"at {truncate_number(target.angle)} degrees"
-                        self._sound_service.play_sound(alarm)
-            except:
-                logger.exception('Error in alarm service loop')
-
-            time.sleep(5)
+        if len(self._alarming_traffic) > 4:
+            distances = ', '.join(f'{truncate_number(t.distance_m)} meters' for t in self._alarming_traffic)
+            self._sound_service.play_sound(f"{len(self._alarming_traffic)} targets, {distances}")
+        elif self._alarming_traffic:
+            for t in self._alarming_traffic:
+                self._sound_service.play_sound(f"{truncate_number(t.distance_m)} meters away, "
+                                               f"{truncate_number(t.altitude_m)} meters up, "
+                                               f"at {truncate_number(t.bearing_absolude_dg)} degrees")

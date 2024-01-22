@@ -36,11 +36,6 @@ def main():
         position_service=position_service,
     )
 
-    ui_service = UIServiceWorker(
-        settings_service=settings_service,
-        traffic_service=traffic_service,
-        position_service=position_service,
-    )
     sound_service = SoundServiceWorker(
         settings_service=settings_service
     )
@@ -48,7 +43,13 @@ def main():
         settings_service=settings_service,
         traffic_service=traffic_service,
         sound_service=sound_service,
-        position_service=position_service
+    )
+
+    ui_service = UIServiceWorker(
+        settings_service=settings_service,
+        traffic_service=traffic_service,
+        position_service=position_service,
+        alarm_service=alarm_interface,
     )
 
     run_and_wait(
