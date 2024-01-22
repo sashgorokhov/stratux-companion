@@ -1,4 +1,5 @@
 import datetime
+import time
 
 from PIL import ImageFont, Image, ImageDraw
 
@@ -110,6 +111,25 @@ class AlarmScreen(LinedScreen):
         return lines
 
 
+class StatusScreen(LinedScreen):
+    def __init__(self, position_service: PositionServiceWorker, **kwargs):
+        self._position_service = position_service
+
+        super().__init__(**kwargs)
+
+    def get_lines(self):
+        position_info = self._position_service.position_info()
+        gps = self._position_service.get_current_position()
+
+        return [
+            f'Lat: {gps.lat}',
+            f'Lng: {gps.lng}',
+            f'Alt MSL: {position_info.altitude_msl_m}',
+            f'Alt HAE: {position_info.altitude_hae_m}',
+            f'Sats: {position_info.satellites}'
+        ]
+
+
 class UIServiceWorker(ServiceWorker):
     """
     UI Service worker manages display. It uses Screen instances to output different information.
@@ -139,9 +159,11 @@ class UIServiceWorker(ServiceWorker):
         )
 
         self._device = device
-        self._framerate_regulator = framerate_regulator()
+        self._framerate_regulator = framerate_regulator(fps=5)
         self._device.clear()
         self._device.backlight(True)
+
+        self._screen_carousel_t = time.time()
 
         self.set_traffic_screen()
 
@@ -153,12 +175,20 @@ class UIServiceWorker(ServiceWorker):
     def set_alarm_screen(self):
         self._screen = AlarmScreen(device=self._device, alarm_service=self._alarm_service)
 
+    def set_status_screen(self):
+        self._screen = StatusScreen(device=self._device, position_service=self._position_service)
+
     def trigger(self):
         with self._framerate_regulator:
             if self._alarm_service.alarming_traffic():
                 self.set_alarm_screen()
             else:
-                self.set_traffic_screen()
+                if time.time() - self._screen_carousel_t > 10:
+                    self._screen_carousel_t = time.time()
+                    if isinstance(self._screen, TrafficScreen):
+                        self.set_status_screen()
+                    else:
+                        self.set_traffic_screen()
 
             self._screen.update()
             self._device.display(self._screen.image)

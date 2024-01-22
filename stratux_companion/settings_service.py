@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class Settings(pydantic.BaseModel):
     traffic_endpoint: str = 'ws://192.168.10.1/traffic'
+    situation_endpoint: str = 'http://192.168.10.1/getSituation'
 
     traffic_track_time_s: int = 30
 
