@@ -163,7 +163,7 @@ class TrafficServiceWorker(ServiceWorker):
         position = self._position_service.get_current_position()
 
         traffic_info = {
-            'timestamp': message['Timestamp'].rstrip('Z')[:-3],
+            'timestamp': datetime.datetime.fromisoformat(message['Timestamp'].rstrip('Z')[:-3]),
             'icao': str(message['Icao_addr']),
             'registration': str(message['Reg']),
             'tail': str(message['Tail']),
