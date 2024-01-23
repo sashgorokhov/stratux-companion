@@ -105,7 +105,7 @@ class AlarmScreen(LinedScreen):
             f'Alarms: {len(alarming_traffic)}'
         ]
 
-        for t in alarming_traffic:
+        for t in alarming_traffic[:5]:
             lines.append(f"{t.registration if t.registration else t.icao[:3]} D:{t.distance_m}m A:{t.altitude_m}m")
 
         return lines
