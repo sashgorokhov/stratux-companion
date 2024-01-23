@@ -5,6 +5,7 @@ from PIL import ImageFont, Image, ImageDraw
 
 from stratux_companion.alarm_service import AlarmServiceWorker
 from stratux_companion.position_service import PositionServiceWorker
+from stratux_companion.power_service import PowerService
 from stratux_companion.settings_service import SettingsService
 from stratux_companion.traffic_service import TrafficServiceWorker
 
@@ -112,8 +113,11 @@ class AlarmScreen(LinedScreen):
 
 
 class StatusScreen(LinedScreen):
-    def __init__(self, position_service: PositionServiceWorker, **kwargs):
+    def __init__(self, position_service: PositionServiceWorker, power_service: PowerService, **kwargs):
         self._position_service = position_service
+        self._power_service = power_service
+
+        self._power_readings = []
 
         super().__init__(**kwargs)
 
@@ -126,8 +130,38 @@ class StatusScreen(LinedScreen):
             f'Lng: {gps.lng}',
             f'Alt MSL: {position_info.altitude_msl_m}',
             f'Alt HAE: {position_info.altitude_hae_m}',
-            f'Sats: {position_info.satellites}'
+            f'Sats: {position_info.satellites}',
+            f'{round(self._power_service.voltage, 1)}v {round(self._power_service.power, 1)}W',
         ]
+
+    def update(self):
+        super().update()
+
+        # self.render_power_graph()
+
+    # def render_power_graph(self):
+    #     dot_size = 2
+    #     width = 100
+    #     height = 30
+    #     max_readings = width // dot_size
+    #     max_read_value = 15
+    #
+    #     start_x, start_y = self._x_offset, self._y_offset
+    #     end_x = start_x + width
+    #     end_y = start_y + height
+    #
+    #     self._power_readings.append(self._power_service.power)
+    #     if len(self._power_readings) > max_readings:
+    #         self._power_readings.pop(0)
+    #
+    #     slope = height / max_read_value
+    #
+    #     self._draw.rectangle((start_x, start_y, end_x, end_y), outline='red')
+    #
+    #     for n, reading in enumerate(self._power_readings):
+    #         x = start_x + n*2
+    #         y = end_y - round(slope * reading)
+    #         self._draw.rectangle((x, y, x + dot_size // 2, y + dot_size // 2), fill='red')
 
 
 class UIServiceWorker(ServiceWorker):
@@ -139,11 +173,12 @@ class UIServiceWorker(ServiceWorker):
 
     _screen: Screen
 
-    def __init__(self, traffic_service: TrafficServiceWorker, settings_service: SettingsService, position_service: PositionServiceWorker, alarm_service: AlarmServiceWorker):
+    def __init__(self, traffic_service: TrafficServiceWorker, settings_service: SettingsService, position_service: PositionServiceWorker, alarm_service: AlarmServiceWorker, power_service: PowerService):
         self._traffic_service = traffic_service
         self._settings_service = settings_service
         self._position_service = position_service
         self._alarm_service = alarm_service
+        self._power_service = power_service
 
         serial = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
         device = st7735(
@@ -176,19 +211,21 @@ class UIServiceWorker(ServiceWorker):
         self._screen = AlarmScreen(device=self._device, alarm_service=self._alarm_service)
 
     def set_status_screen(self):
-        self._screen = StatusScreen(device=self._device, position_service=self._position_service)
+        self._screen = StatusScreen(device=self._device, position_service=self._position_service, power_service=self._power_service)
 
     def trigger(self):
         with self._framerate_regulator:
-            if self._alarm_service.alarming_traffic():
-                self.set_alarm_screen()
-            else:
-                if time.time() - self._screen_carousel_t > 10:
-                    self._screen_carousel_t = time.time()
-                    if isinstance(self._screen, TrafficScreen):
-                        self.set_status_screen()
-                    else:
-                        self.set_traffic_screen()
-
+            self._switch_screens()
             self._screen.update()
             self._device.display(self._screen.image)
+
+    def _switch_screens(self):
+        if self._alarm_service.alarming_traffic():
+            self.set_alarm_screen()
+        else:
+            if time.time() - self._screen_carousel_t > 10:
+                self._screen_carousel_t = time.time()
+                if isinstance(self._screen, TrafficScreen):
+                    self.set_status_screen()
+                else:
+                    self.set_traffic_screen()
