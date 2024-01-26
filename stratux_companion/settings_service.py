@@ -28,6 +28,9 @@ class Settings(pydantic.BaseModel):
 
     display_rotation: Literal[0, 1, 2, 3] = 0
 
+    battery_cells: int = 4
+    battery_alarm_p: int = 30
+
 
 class Settings_Local(Settings):
     traffic_endpoint = 'ws://192.168.0.137/traffic'

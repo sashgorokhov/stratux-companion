@@ -5,7 +5,7 @@ from typing import Callable
 from stratux_companion import config
 from stratux_companion.alarm_service import AlarmServiceWorker
 from stratux_companion.position_service import PositionServiceWorker
-from stratux_companion.power_service import PowerService
+from stratux_companion.hardware_status_service import HardwareStatusService
 from stratux_companion.settings_service import SettingsService
 from stratux_companion.sound_service import SoundServiceWorker
 from stratux_companion.traffic_service import TrafficServiceWorker
@@ -29,6 +29,11 @@ def main():
     settings_service = SettingsService(
         settings_file=config.SETTINGS_FILE
     )
+
+    hardware_status_service = HardwareStatusService(
+        settings_service=settings_service
+    )
+
     position_service = PositionServiceWorker(
         settings_service=settings_service
     )
@@ -44,16 +49,16 @@ def main():
         settings_service=settings_service,
         traffic_service=traffic_service,
         sound_service=sound_service,
+        hardware_status_service=hardware_status_service,
     )
 
-    power_service = PowerService()
 
     ui_service = UIServiceWorker(
         settings_service=settings_service,
         traffic_service=traffic_service,
         position_service=position_service,
         alarm_service=alarm_interface,
-        power_service=power_service
+        hardware_status_service=hardware_status_service,
     )
 
     run_and_wait(

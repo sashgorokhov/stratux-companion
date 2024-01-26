@@ -127,3 +127,20 @@ def truncate_number(n: int) -> int:
 
 def km_h(knots: float) -> float:
     return knots * 1.85200
+
+
+class Throttle:
+    def __init__(self, delta: datetime.timedelta):
+        self._delta = delta
+        self._last_t = time.time()
+
+    @property
+    def is_throttled(self) -> bool:
+        """
+        Return True `delta` seconds has passed since last time this function returned True
+        """
+        new_t = time.time()
+        if (new_t - self._last_t) > self._delta.total_seconds():
+            self._last_t = new_t
+            return False
+        return True

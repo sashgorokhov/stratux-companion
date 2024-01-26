@@ -15,6 +15,7 @@ geopy = "^2.4.1"
 geographiclib = "^2.0"
 requests = "^2.31.0"
 adafruit-circuitpython-ina219 = "^3.4.24"
+psutil = "^5.9.8"
 
 
 [build-system]

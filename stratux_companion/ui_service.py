@@ -1,11 +1,12 @@
 import datetime
 import time
 
+import psutil
 from PIL import ImageFont, Image, ImageDraw
 
 from stratux_companion.alarm_service import AlarmServiceWorker
 from stratux_companion.position_service import PositionServiceWorker
-from stratux_companion.power_service import PowerService
+from stratux_companion.hardware_status_service import HardwareStatusService
 from stratux_companion.settings_service import SettingsService
 from stratux_companion.traffic_service import TrafficServiceWorker
 
@@ -113,9 +114,12 @@ class AlarmScreen(LinedScreen):
 
 
 class StatusScreen(LinedScreen):
-    def __init__(self, position_service: PositionServiceWorker, power_service: PowerService, **kwargs):
+    """
+    Status screen displays current cpu, temperature, battery readings
+    """
+    def __init__(self, position_service: PositionServiceWorker, hardware_status_service: HardwareStatusService, **kwargs):
         self._position_service = position_service
-        self._power_service = power_service
+        self._hardware_status_service = hardware_status_service
 
         self._power_readings = []
 
@@ -125,13 +129,20 @@ class StatusScreen(LinedScreen):
         position_info = self._position_service.position_info()
         gps = self._position_service.get_current_position()
 
+        battery_p = round(self._hardware_status_service.battery_percent, 0)
+        volts = round(self._hardware_status_service.voltage, 1)
+        watts = round(self._hardware_status_service.power, 1)
+        temp = round(self._hardware_status_service.cpu_temp, 0)
+        cpu = round(self._hardware_status_service.cpu_usage, 0)
+
         return [
             f'Lat: {gps.lat}',
             f'Lng: {gps.lng}',
-            f'Alt MSL: {position_info.altitude_msl_m}',
-            f'Alt HAE: {position_info.altitude_hae_m}',
             f'Sats: {position_info.satellites}',
-            f'{round(self._power_service.voltage, 1)}v {round(self._power_service.power, 1)}W',
+            f'CPU: {cpu}%',
+            f'Temp: {temp}C',
+            f'Batt: {battery_p}% {volts}v ',
+            f'  {watts}W',
         ]
 
     def update(self):
@@ -150,7 +161,7 @@ class StatusScreen(LinedScreen):
     #     end_x = start_x + width
     #     end_y = start_y + height
     #
-    #     self._power_readings.append(self._power_service.power)
+    #     self._power_readings.append(self._hardware_status_service.power)
     #     if len(self._power_readings) > max_readings:
     #         self._power_readings.pop(0)
     #
@@ -173,12 +184,12 @@ class UIServiceWorker(ServiceWorker):
 
     _screen: Screen
 
-    def __init__(self, traffic_service: TrafficServiceWorker, settings_service: SettingsService, position_service: PositionServiceWorker, alarm_service: AlarmServiceWorker, power_service: PowerService):
+    def __init__(self, traffic_service: TrafficServiceWorker, settings_service: SettingsService, position_service: PositionServiceWorker, alarm_service: AlarmServiceWorker, hardware_status_service: HardwareStatusService):
         self._traffic_service = traffic_service
         self._settings_service = settings_service
         self._position_service = position_service
         self._alarm_service = alarm_service
-        self._power_service = power_service
+        self._hardware_status_service = hardware_status_service
 
         serial = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
         device = st7735(
@@ -211,7 +222,7 @@ class UIServiceWorker(ServiceWorker):
         self._screen = AlarmScreen(device=self._device, alarm_service=self._alarm_service)
 
     def set_status_screen(self):
-        self._screen = StatusScreen(device=self._device, position_service=self._position_service, power_service=self._power_service)
+        self._screen = StatusScreen(device=self._device, position_service=self._position_service, hardware_status_service=self._hardware_status_service)
 
     def trigger(self):
         with self._framerate_regulator:

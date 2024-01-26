@@ -5,11 +5,12 @@ from typing import List, NamedTuple, Dict
 
 from geographiclib.geodesic import Geodesic
 
+from stratux_companion.hardware_status_service import HardwareStatusService
 from stratux_companion.position_service import PositionServiceWorker
 from stratux_companion.settings_service import SettingsService
 from stratux_companion.sound_service import SoundServiceWorker
 from stratux_companion.traffic_service import TrafficServiceWorker, TrafficInfo
-from stratux_companion.util import GPS, truncate_number, QueueConsumingServiceWorker, ServiceWorker
+from stratux_companion.util import GPS, truncate_number, QueueConsumingServiceWorker, ServiceWorker, Throttle
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +29,15 @@ class AlarmTarget(NamedTuple):
 class AlarmServiceWorker(ServiceWorker):
     delay = datetime.timedelta(seconds=15)
 
-    def __init__(self, traffic_service: TrafficServiceWorker, settings_service: SettingsService, sound_service: SoundServiceWorker):
+    def __init__(self, traffic_service: TrafficServiceWorker, settings_service: SettingsService, sound_service: SoundServiceWorker, hardware_status_service: HardwareStatusService):
+        self._hardware_status_service = hardware_status_service
         self._sound_service = sound_service
         self._settings_service = settings_service
         self._traffic_service = traffic_service
 
         self._alarming_traffic: List[TrafficInfo] = []
+
+        self._battery_alarm_throttle = Throttle(delta=datetime.timedelta(minutes=5))
 
         super().__init__()
 
@@ -56,7 +60,7 @@ class AlarmServiceWorker(ServiceWorker):
     def alarming_traffic(self):
         return self._alarming_traffic[:]
 
-    def trigger(self):
+    def monitor_traffic(self):
         all_traffic = self._traffic_service.get_closest_traffic()
         self._alarming_traffic = self.get_alarming_traffic(all_traffic)
 
@@ -68,3 +72,16 @@ class AlarmServiceWorker(ServiceWorker):
                 self._sound_service.play_sound(f"{truncate_number(t.distance_m)} meters away, "
                                                f"{truncate_number(t.altitude_m)} meters up, "
                                                f"at {truncate_number(t.bearing_absolude_dg)} degrees")
+
+    def monitor_battery(self):
+        if self._battery_alarm_throttle.is_throttled:
+            return
+
+        current_p = self._hardware_status_service.battery_percent
+
+        if current_p < self._settings_service.get_settings().battery_alarm_p:
+            self._sound_service.play_sound(f'Low battery: {round(current_p, 0)} percent')
+
+    def trigger(self):
+        self.monitor_traffic()
+        self.monitor_battery()
