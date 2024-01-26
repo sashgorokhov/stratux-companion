@@ -215,7 +215,7 @@ class TrafficServiceWorker(ServiceWorker):
         return self._traffic_state.copy()
 
     def get_closest_traffic(self) -> List[TrafficInfo]:
-        return sorted(self.get_traffic_state().values(), key=lambda t: t.distance)
+        return sorted(self.get_traffic_state().values(), key=lambda t: t.distance_m)
 
     def _evict_traffic_state(self):
         track_time_s = self._settings_service.get_settings().traffic_track_time_s
