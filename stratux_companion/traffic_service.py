@@ -162,8 +162,15 @@ class TrafficServiceWorker(ServiceWorker):
     def _build_traffic_info(self, message: dict) -> TrafficInfo:
         position = self._position_service.get_current_position()
 
+        ts = message['Timestamp']
+        try:
+            timestamp = datetime.datetime.fromisoformat(ts[ts.find('.')])
+        except:
+            logger.exception(f'Error converting timestamp from {ts}')
+            timestamp = datetime.datetime.utcnow()
+
         traffic_info = {
-            'timestamp': datetime.datetime.fromisoformat(message['Timestamp'].rstrip('Z')[:-3]),
+            'timestamp': timestamp,
             'icao': str(message['Icao_addr']),
             'registration': str(message['Reg']),
             'tail': str(message['Tail']),
@@ -181,14 +188,14 @@ class TrafficServiceWorker(ServiceWorker):
 
         traffic_info['altitude_m'] = altitude_m
 
-        distance_m = position.distance(traffic_info['gps'])
+        distance_m = int(position.distance(traffic_info['gps']))
         # It is unlikely we receive a message from that far
         if distance_m > 50_000:
             distance_m = 0
 
         traffic_info['distance_m'] = distance_m
 
-        traffic_info['bearing_absolude_dg'] = position.absolute_bearing(traffic_info['gps'])
+        traffic_info['bearing_absolude_dg'] = int(position.absolute_bearing(traffic_info['gps']))
 
         obj = TrafficInfo(**traffic_info)
 

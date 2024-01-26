@@ -80,7 +80,7 @@ class AlarmServiceWorker(ServiceWorker):
         current_p = self._hardware_status_service.battery_percent
 
         if current_p < self._settings_service.get_settings().battery_alarm_p:
-            self._sound_service.play_sound(f'Low battery: {round(current_p, 0)} percent')
+            self._sound_service.play_sound(f'Low battery: {int(current_p)} percent')
 
     def trigger(self):
         self.monitor_traffic()

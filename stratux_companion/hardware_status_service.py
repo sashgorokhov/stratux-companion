@@ -55,7 +55,7 @@ class HardwareStatusService:
         max_diff = max_v - min_v
         diff = max_v - self.voltage
 
-        return (diff / max_diff) * 100
+        return 100 - (diff / max_diff) * 100
 
     @property
     def cpu_temp(self) -> float:
