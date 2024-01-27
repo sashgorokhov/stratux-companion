@@ -77,6 +77,7 @@ from stratux_companion.util import GPS, ServiceWorker, km_h
 
 
 logger = logging.getLogger(__name__)
+traffic_messages_logger = logging.getLogger('stratux_companion.traffic')
 
 
 class TrafficInfo(NamedTuple):
@@ -146,6 +147,7 @@ class TrafficServiceWorker(ServiceWorker):
                 # If we get a lot of messages in short period of time, this loop will iterate as fast as possible through them
                 message_str = websocket.recv(timeout=self.delay.total_seconds())
                 logger.debug(f'Traffic message received: {message_str}')
+                traffic_messages_logger.debug(message_str)
                 self._handle_traffic_message(message_str)
             except TimeoutError:
                 self._update_heartbeat()
@@ -164,7 +166,7 @@ class TrafficServiceWorker(ServiceWorker):
 
         ts = message['Timestamp']
         try:
-            timestamp = datetime.datetime.fromisoformat(ts[ts.find('.')])
+            timestamp = datetime.datetime.fromisoformat(ts[:ts.find('.')])
         except:
             logger.exception(f'Error converting timestamp from {ts}')
             timestamp = datetime.datetime.utcnow()
@@ -182,16 +184,16 @@ class TrafficServiceWorker(ServiceWorker):
         }
 
         altitude_m = int(meters(feet=message['Alt']))
-        # Service ceiling usually is at 12 000, so anything larger than that is wonky
-        if altitude_m > 15_000:
-            altitude_m = 0
+        # # Service ceiling usually is at 12 000, so anything larger than that is wonky
+        # if altitude_m > 15_000:
+        #     altitude_m = 0
 
         traffic_info['altitude_m'] = altitude_m
 
         distance_m = int(position.distance(traffic_info['gps']))
-        # It is unlikely we receive a message from that far
-        if distance_m > 50_000:
-            distance_m = 0
+        # # It is unlikely we receive a message from that far
+        # if distance_m > 50_000:
+        #     distance_m = 0
 
         traffic_info['distance_m'] = distance_m
 
@@ -231,7 +233,7 @@ class TrafficServiceWorker(ServiceWorker):
         track_time = datetime.timedelta(seconds=track_time_s)
 
         with self._lock:
-            for icao, traffic_state in self._traffic_state.items():
+            for icao, traffic_state in list(self._traffic_state.items()):
                 if (now - traffic_state.timestamp) > track_time:
                     logger.debug(f'{icao} has outdated')
                     self._traffic_state.pop(icao)

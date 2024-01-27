@@ -15,25 +15,48 @@ LOGGING_CONFIG = {
         'short': {
             'format': '%(levelname)s: %(message)s',
         },
+        'jsonl': {
+            'format': '%(message)s',
+        },
     },
     'handlers': {
         'console': {
             'level': 'DEBUG',
-            'formatter': 'default',
+            'formatter': 'short',
             'class': 'logging.StreamHandler',
         },
         'file': {
             'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
             'formatter': 'default',
             'filename': ROOT_DIR / 'stratux_companion.log',
-            'maxBytes': 1024 * 1024,  # 1 mb
-            'backupCount': 0
+            'backupCount': 5
+        },
+        'traffic': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'formatter': 'jsonl',
+            'filename': ROOT_DIR / 'traffic.jsonl',
+            'when': 'midnight',
+            'backupCount': 5
+        },
+        'errors': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'formatter': 'default',
+            'filename': ROOT_DIR / 'stratux_companion.errors.log',
+            'when': 'midnight',
+            'backupCount': 2
         },
     },
     'loggers': {
         'stratux_companion': {
-            'handlers': ['file', 'console'],
+            'handlers': ['errors', 'file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'stratux_companion.traffic': {
+            'handlers': ['traffic'],
             'level': 'DEBUG',
             'propagate': False,
         },

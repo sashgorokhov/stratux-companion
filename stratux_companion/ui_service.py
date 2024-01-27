@@ -87,7 +87,7 @@ class TrafficScreen(LinedScreen):
             lines.append('No traffic detected')
         else:
             for t in traffic[:self.max_traffic]:
-                lines.append(f"{t.icao[:3]} D:{t.distance_m}m A:{t.altitude_m}m")
+                lines.append(f"{t.registration[:3] if t.registration else t.icao[:3]} D:{t.distance_m}m A:{t.altitude_m}m")
 
         return lines
 
@@ -108,7 +108,7 @@ class AlarmScreen(LinedScreen):
         ]
 
         for t in alarming_traffic[:5]:
-            lines.append(f"{t.registration if t.registration else t.icao[:3]} D:{t.distance_m}m A:{t.altitude_m}m")
+            lines.append(f"{t.registration[:3] if t.registration else t.icao[:3]} D:{t.distance_m}m A:{t.altitude_m}m")
 
         return lines
 
