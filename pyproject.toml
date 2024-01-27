@@ -16,7 +16,11 @@ geographiclib = "^2.0"
 requests = "^2.31.0"
 adafruit-circuitpython-ina219 = "^3.4.24"
 psutil = "^5.9.8"
+chime = "^0.7.0"
 
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
 
 [build-system]
 requires = ["poetry-core"]

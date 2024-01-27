@@ -6,6 +6,7 @@ import requests
 from geopy.units import meters
 
 from stratux_companion.settings_service import SettingsService
+from stratux_companion.sound_service import SoundServiceWorker, Beeps
 from stratux_companion.util import GPS, ServiceWorker
 
 logger = logging.getLogger(__name__)
@@ -83,7 +84,7 @@ class PositionServiceWorker(ServiceWorker):
     # Delay between attempts to connect to stratux
     delay = datetime.timedelta(seconds=30)
 
-    def __init__(self, settings_service: SettingsService):
+    def __init__(self, settings_service: SettingsService, sound_service: SoundServiceWorker):
         self._current_position: Optional[GPS] = None
         self._position_info = PositionInfo(
             altitude_hae_m=0,
@@ -91,6 +92,7 @@ class PositionServiceWorker(ServiceWorker):
             satellites=0
         )
         self._settings_service = settings_service
+        self._sound_service = sound_service
 
         self._session = requests.Session()
 
@@ -115,6 +117,9 @@ class PositionServiceWorker(ServiceWorker):
         if not new_position.is_valid:
             logger.debug('Reported position is not valid')
             return
+
+        if self._current_position is None:
+            self._sound_service.play_beep(Beeps.info)
 
         self._current_position = new_position
         logger.debug(f'Current position: {self._current_position}')

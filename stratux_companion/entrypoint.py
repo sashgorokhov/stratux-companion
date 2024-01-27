@@ -34,24 +34,26 @@ def main():
         settings_service=settings_service
     )
 
-    position_service = PositionServiceWorker(
+    sound_service = SoundServiceWorker(
         settings_service=settings_service
     )
+
+    position_service = PositionServiceWorker(
+        settings_service=settings_service,
+        sound_service=sound_service
+    )
+
     traffic_service = TrafficServiceWorker(
         settings_service=settings_service,
         position_service=position_service,
     )
 
-    sound_service = SoundServiceWorker(
-        settings_service=settings_service
-    )
     alarm_interface = AlarmServiceWorker(
         settings_service=settings_service,
         traffic_service=traffic_service,
         sound_service=sound_service,
         hardware_status_service=hardware_status_service,
     )
-
 
     ui_service = UIServiceWorker(
         settings_service=settings_service,

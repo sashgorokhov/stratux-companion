@@ -8,7 +8,7 @@ from geographiclib.geodesic import Geodesic
 from stratux_companion.hardware_status_service import HardwareStatusService
 from stratux_companion.position_service import PositionServiceWorker
 from stratux_companion.settings_service import SettingsService
-from stratux_companion.sound_service import SoundServiceWorker
+from stratux_companion.sound_service import SoundServiceWorker, Beeps
 from stratux_companion.traffic_service import TrafficServiceWorker, TrafficInfo
 from stratux_companion.util import GPS, truncate_number, QueueConsumingServiceWorker, ServiceWorker, Throttle
 
@@ -38,6 +38,7 @@ class AlarmServiceWorker(ServiceWorker):
         self._alarming_traffic: List[TrafficInfo] = []
 
         self._battery_alarm_throttle = Throttle(delta=datetime.timedelta(minutes=5))
+        self._traffic_beep_throttle = Throttle(delta=datetime.timedelta(seconds=30))
 
         super().__init__()
 
@@ -63,6 +64,10 @@ class AlarmServiceWorker(ServiceWorker):
     def monitor_traffic(self):
         all_traffic = self._traffic_service.get_closest_traffic()
         self._alarming_traffic = self.get_alarming_traffic(all_traffic)
+
+        # Play beep every 30s if some traffic is present
+        if all_traffic and not self._alarming_traffic and not self._traffic_beep_throttle.is_throttled:
+            self._sound_service.play_beep(Beeps.success)
 
         if len(self._alarming_traffic) > 4:
             distances = ', '.join(f'{truncate_number(t.distance_m)} meters' for t in self._alarming_traffic)
