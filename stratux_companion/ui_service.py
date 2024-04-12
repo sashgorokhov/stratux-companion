@@ -129,11 +129,11 @@ class StatusScreen(LinedScreen):
         position_info = self._position_service.position_info()
         gps = self._position_service.get_current_position()
 
-        battery_p = round(self._hardware_status_service.battery_percent, 0)
-        volts = round(self._hardware_status_service.voltage, 1)
-        watts = round(self._hardware_status_service.power, 1)
-        temp = round(self._hardware_status_service.cpu_temp, 0)
-        cpu = round(self._hardware_status_service.cpu_usage, 0)
+        battery_p = 0#round(self._hardware_status_service.battery_percent, 0)
+        volts = 0#round(self._hardware_status_service.voltage, 1)
+        watts = 0#round(self._hardware_status_service.power, 1)
+        temp = 0#round(self._hardware_status_service.cpu_temp, 0)
+        cpu = 0#round(self._hardware_status_service.cpu_usage, 0)
 
         return [
             f'Lat: {gps.lat}',
