@@ -184,16 +184,16 @@ class TrafficServiceWorker(ServiceWorker):
         }
 
         altitude_m = int(meters(feet=message['Alt']))
-        # # Service ceiling usually is at 12 000, so anything larger than that is wonky
-        # if altitude_m > 15_000:
-        #     altitude_m = 0
+        # Service ceiling usually is at 12 000, so anything larger than that is wonky
+        if altitude_m > 15_000:
+            altitude_m = 0
 
         traffic_info['altitude_m'] = altitude_m
 
         distance_m = int(position.distance(traffic_info['gps']))
-        # # It is unlikely we receive a message from that far
-        # if distance_m > 50_000:
-        #     distance_m = 0
+        # It is unlikely we receive a message from that far
+        if distance_m > 50_000:
+            distance_m = 0
 
         traffic_info['distance_m'] = distance_m
 

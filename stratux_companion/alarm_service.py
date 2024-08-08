@@ -1,16 +1,12 @@
 import datetime
 import logging
-import time
-from typing import List, NamedTuple, Dict
-
-from geographiclib.geodesic import Geodesic
+from typing import List, NamedTuple
 
 from stratux_companion.hardware_status_service import HardwareStatusService
-from stratux_companion.position_service import PositionServiceWorker
 from stratux_companion.settings_service import SettingsService
 from stratux_companion.sound_service import SoundServiceWorker, Beeps
 from stratux_companion.traffic_service import TrafficServiceWorker, TrafficInfo
-from stratux_companion.util import GPS, truncate_number, QueueConsumingServiceWorker, ServiceWorker, Throttle
+from stratux_companion.util import GPS, truncate_number, ServiceWorker, Throttle
 
 logger = logging.getLogger(__name__)
 
@@ -82,10 +78,10 @@ class AlarmServiceWorker(ServiceWorker):
         if self._battery_alarm_throttle.is_throttled:
             return
 
-        # current_p = self._hardware_status_service.battery_percent
-        #
-        # if current_p < self._settings_service.get_settings().battery_alarm_p:
-        #     self._sound_service.play_sound(f'Low battery: {int(current_p)} percent')
+        current_p = self._hardware_status_service.battery_percent
+
+        if current_p < self._settings_service.get_settings().battery_alarm_p:
+            self._sound_service.play_sound(f'Low battery: {int(current_p)} percent')
 
     def trigger(self):
         self.monitor_traffic()

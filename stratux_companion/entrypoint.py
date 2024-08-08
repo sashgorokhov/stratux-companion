@@ -30,9 +30,9 @@ def main():
         settings_file=config.SETTINGS_FILE
     )
 
-    # hardware_status_service = HardwareStatusService(
-    #     settings_service=settings_service
-    # )
+    hardware_status_service = HardwareStatusService(
+        settings_service=settings_service
+    )
 
     sound_service = SoundServiceWorker(
         settings_service=settings_service
@@ -52,7 +52,7 @@ def main():
         settings_service=settings_service,
         traffic_service=traffic_service,
         sound_service=sound_service,
-        hardware_status_service=None#hardware_status_service,
+        hardware_status_service=hardware_status_service,
     )
 
     ui_service = UIServiceWorker(
@@ -60,7 +60,7 @@ def main():
         traffic_service=traffic_service,
         position_service=position_service,
         alarm_service=alarm_interface,
-        hardware_status_service=None#hardware_status_service,
+        hardware_status_service=hardware_status_service,
     )
 
     run_and_wait(

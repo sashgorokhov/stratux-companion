@@ -1,19 +1,16 @@
 import datetime
 import time
 
-import psutil
 from PIL import ImageFont, Image, ImageDraw
-
-from stratux_companion.alarm_service import AlarmServiceWorker
-from stratux_companion.position_service import PositionServiceWorker
-from stratux_companion.hardware_status_service import HardwareStatusService
-from stratux_companion.settings_service import SettingsService
-from stratux_companion.traffic_service import TrafficServiceWorker
-
 from luma.core.interface.serial import spi
 from luma.core.sprite_system import framerate_regulator
 from luma.lcd.device import st7735
 
+from stratux_companion.alarm_service import AlarmServiceWorker
+from stratux_companion.hardware_status_service import HardwareStatusService
+from stratux_companion.position_service import PositionServiceWorker
+from stratux_companion.settings_service import SettingsService
+from stratux_companion.traffic_service import TrafficServiceWorker
 from stratux_companion.util import ServiceWorker
 
 
@@ -129,11 +126,11 @@ class StatusScreen(LinedScreen):
         position_info = self._position_service.position_info()
         gps = self._position_service.get_current_position()
 
-        battery_p = 0#round(self._hardware_status_service.battery_percent, 0)
-        volts = 0#round(self._hardware_status_service.voltage, 1)
-        watts = 0#round(self._hardware_status_service.power, 1)
-        temp = 0#round(self._hardware_status_service.cpu_temp, 0)
-        cpu = 0#round(self._hardware_status_service.cpu_usage, 0)
+        battery_p = round(self._hardware_status_service.battery_percent, 0)
+        volts = round(self._hardware_status_service.voltage, 1)
+        watts = round(self._hardware_status_service.power, 1)
+        temp = round(self._hardware_status_service.cpu_temp, 0)
+        cpu = round(self._hardware_status_service.cpu_usage, 0)
 
         return [
             f'Lat: {gps.lat}',
@@ -191,6 +188,8 @@ class UIServiceWorker(ServiceWorker):
         self._alarm_service = alarm_service
         self._hardware_status_service = hardware_status_service
 
+        settings = settings_service.get_settings()
+
         serial = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
         device = st7735(
             serial_interface=serial,
@@ -199,13 +198,13 @@ class UIServiceWorker(ServiceWorker):
             v_offset=2,
             h_offset=1,
             bgr=True,
-            rotate=settings_service.get_settings().display_rotation,
+            rotate=settings.display_rotation,
             gpio_LIGHT=23,
             active_low=False
         )
 
         self._device = device
-        self._framerate_regulator = framerate_regulator(fps=5)
+        self._framerate_regulator = framerate_regulator(fps=settings.display_fps)
         self._device.clear()
         self._device.backlight(True)
 

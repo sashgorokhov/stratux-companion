@@ -27,6 +27,7 @@ class Settings(pydantic.BaseModel):
     max_altitude_m: int = 3_000
 
     display_rotation: Literal[0, 1, 2, 3] = 0
+    display_fps: int = 2
 
     battery_cells: int = 4
     battery_alarm_p: int = 30
