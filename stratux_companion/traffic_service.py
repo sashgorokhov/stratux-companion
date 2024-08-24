@@ -165,11 +165,11 @@ class TrafficServiceWorker(ServiceWorker):
         position = self._position_service.get_current_position()
 
         ts = message['Timestamp']
-        try:
-            timestamp = datetime.datetime.fromisoformat(ts[:ts.find('.')])
-        except:
-            logger.exception(f'Error converting timestamp from {ts}')
-            timestamp = datetime.datetime.utcnow()
+        # try:
+        #     timestamp = datetime.datetime.fromisoformat(ts[:ts.find('.')])
+        # except:
+        #     logger.exception(f'Error converting timestamp from {ts}')
+        timestamp = datetime.datetime.utcnow()
 
         traffic_info = {
             'timestamp': timestamp,

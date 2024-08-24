@@ -66,7 +66,7 @@ class AlarmServiceWorker(ServiceWorker):
             self._sound_service.play_beep(Beeps.success)
 
         if len(self._alarming_traffic) > 4:
-            distances = ', '.join(f'{truncate_number(t.distance_m)} meters' for t in self._alarming_traffic)
+            distances = ', '.join(f'{truncate_number(t.distance_m)} meters' for t in self._alarming_traffic[:5])
             self._sound_service.play_sound(f"{len(self._alarming_traffic)} targets, {distances}")
         elif self._alarming_traffic:
             for t in self._alarming_traffic:
